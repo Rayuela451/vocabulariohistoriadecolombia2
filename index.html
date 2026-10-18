@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Relaciona las palabras con su significado</title>
+<style>
+:root{--ink:#1d3040;--muted:#576b78;--bg:#eef4f6;--paper:#fff;--teal:#087f78;--light:#e7f5f2;--line:#d8e2e6;--good:#166c45}
+*{box-sizing:border-box}html,body{height:100%;margin:0}body{background:var(--bg);color:var(--ink);font:clamp(14px,1.65vw,22px)/1.25 system-ui,-apple-system,Segoe UI,sans-serif}
+main{width:100%;min-height:100%;max-width:1600px;margin:auto;padding:clamp(10px,1.6vh,20px) clamp(12px,2.4vw,34px);display:flex;flex-direction:column;gap:clamp(6px,1vh,13px)}
+.hero{background:#103f51;color:white;padding:clamp(10px,1.8vh,19px) clamp(18px,2.4vw,30px);border-radius:17px;flex-shrink:0}
+.hero h1{font-size:clamp(23px,3vw,39px);line-height:1.1;margin:0;font-weight:800}
+.instruction{font-size:clamp(13px,1.45vw,19px);margin:0;color:var(--muted);flex-shrink:0}
+.board{display:grid;grid-template-columns:1fr 1.5fr;gap:clamp(9px,1.6vw,20px);flex:1;min-height:0}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:clamp(9px,1.25vh,15px);display:flex;flex-direction:column;min-height:0}
+.panel h2{font-size:clamp(16px,1.65vw,22px);margin:0 0 7px}.items{display:grid;grid-template-rows:repeat(10,minmax(0,1fr));gap:clamp(3px,.55vh,6px);flex:1;min-height:0}
+.tile{width:100%;min-height:0;text-align:left;background:white;border:2px solid var(--line);border-radius:9px;padding:2px 9px;font:inherit;font-size:clamp(12px,1.33vw,18px);line-height:1.13;color:var(--ink);cursor:pointer;display:flex;align-items:center;gap:9px;transition:background .12s,border-color .12s}
+.tile:hover{border-color:var(--teal)}.tile:focus-visible{outline:3px solid #e6a14b;outline-offset:2px}.tile.selected{border-color:var(--teal);background:var(--light)}.tile.matched{background:#e5f5e9;border-color:#83bc9e;cursor:default}.tile.wrong{border-color:#d17663;background:#fff1ee}.tile .marker{font-weight:800;flex:0 0 24px;color:var(--teal)}.tile.matched .marker{color:var(--good)}
+.controls{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0}.btn{border:0;background:var(--teal);color:white;border-radius:10px;padding:10px 16px;font:inherit;font-size:clamp(13px,1.4vw,19px);font-weight:700;cursor:pointer}.btn.secondary{background:#fff;border:1px solid var(--line);color:var(--ink)}.status{font-weight:750;font-size:clamp(13px,1.4vw,19px)}
+@media(max-aspect-ratio: 1/1){main{height:auto;min-height:100vh}.board{grid-template-columns:1fr}.items{grid-template-rows:none;grid-auto-rows:minmax(42px,auto)}.tile{min-height:42px}.panel{min-height:unset}}
+@media(min-aspect-ratio: 1/1){main{height:100vh}.board{overflow:hidden}}
+</style>
+</head>
+<body><main>
+<header class="hero"><h1>Relaciona las palabras con su significado</h1></header>
+<p class="instruction">Elige una palabra de la izquierda y después su definición de la derecha.</p>
+<section class="board" aria-label="Actividad de relacionar palabras y definiciones">
+<div class="panel"><h2>Palabras</h2><div id="words" class="items"></div></div>
+<div class="panel"><h2>Significados</h2><div id="definitions" class="items"></div></div>
+</section>
+<div class="controls"><button class="btn secondary" id="reset" type="button">Empezar de nuevo</button><span class="status" id="status" role="status" aria-live="polite">0 de 10 parejas correctas</span></div>
+</main>
+<script>
+const data=[
+ {word:'una época',definition:'Un período de tiempo en la historia.'},
+ {word:'la violencia',definition:'El uso de fuerza para hacer daño a otras personas.'},
+ {word:'morir',definition:'Dejar de vivir.'},
+ {word:'los narcotraficantes',definition:'Personas que venden drogas de manera ilegal.'},
+ {word:'un atentado',definition:'Un ataque para causar daño o miedo.'},
+ {word:'una bomba',definition:'Un objeto que puede explotar y causar daños.'},
+ {word:'un grupo guerrillero',definition:'Un grupo armado que lucha contra el gobierno.'},
+ {word:'asesinar',definition:'Matar a una persona de forma intencional.'},
+ {word:'abandonar',definition:'Dejar un lugar y salir de él.'},
+ {word:'sufrir',definition:'Sentir dolor, tristeza o una situación muy difícil.'}
+];
+let selected=null,found=new Set(),mistake=null;
+const left=document.querySelector('#words'),right=document.querySelector('#definitions'),status=document.querySelector('#status');
+const order=[6,3,9,1,7,0,8,4,2,5];
+function makeTile(label,id,side,number){const b=document.createElement('button');b.type='button';b.className='tile';b.dataset.id=id;b.dataset.side=side;b.innerHTML=`<span class="marker">${number}</span><span></span>`;b.lastElementChild.textContent=label;b.addEventListener('click',()=>choose(side,id));return b;}
+function paint(){document.querySelectorAll('.tile').forEach(b=>{const id=+b.dataset.id,side=b.dataset.side;b.classList.toggle('matched',found.has(id));b.classList.toggle('selected',!!selected&&selected.id===id&&selected.side===side);b.classList.toggle('wrong',!!mistake&&mistake.id===id&&mistake.side===side);b.disabled=found.has(id);});status.textContent=`${found.size} de ${data.length} parejas correctas${found.size===data.length?' · ¡Excelente! 🎉':''}`;}
+function choose(side,id){if(found.has(id))return;mistake=null;if(!selected||selected.side===side){selected={side,id};paint();return;}if(selected.id===id){found.add(id);selected=null;}else{mistake={side,id};selected=null;}paint();}
+function setup(){left.innerHTML='';right.innerHTML='';data.forEach((d,i)=>left.append(makeTile(d.word,i,'word',i+1)));order.forEach((id,i)=>right.append(makeTile(data[id].definition,id,'definition',String.fromCharCode(65+i))));selected=null;mistake=null;found.clear();paint();}
+document.querySelector('#reset').addEventListener('click',setup);setup();
+</script></body></html>
